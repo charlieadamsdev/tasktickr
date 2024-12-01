@@ -1,0 +1,61 @@
+TaskTickr MVP Development Document
+Project Overview
+TaskTickr is a gamified to-do list app that helps users build habits by linking task completion to a "stock price." The app’s stock price rises or falls based on daily task performance, motivating users to stay consistent. Built using React and Supabase, TaskTickr focuses on rapid development with zero-cost tools to deliver a functional MVP quickly.
+
+Core Features
+Task Management
+
+Create Tasks: Users can add new tasks with a title and optional description.
+Edit Tasks: Modify existing task details.
+Delete Tasks: Remove tasks from the list.
+Complete Tasks: Mark tasks as complete, triggering a stock price update.
+Stock Price Tracking
+
+Stock Price Rules:
+Completing all tasks in a day increases the stock price by +5%.
+Missing any tasks decreases the stock price by -3%.
+Base Stock Price: Starts at 10.
+Historical Tracking: Tracks daily stock price changes and logs them.
+Line Chart Visualization
+
+Displays stock price history in a line chart that mimics stock market trends.
+Highlights daily changes based on task completion.
+Technical Stack
+Frontend: React (using Vite for lightweight, fast development)
+Backend & Database: Supabase (Postgres DB, real-time syncing, and API)
+Hosting: Vercel or Netlify (free hosting options for fast deployment)
+Database Schema (Supabase)
+Tasks Table:
+
+id: Unique task identifier.
+title: Title of the task.
+description: (Optional) Details of the task.
+status: Boolean indicating if the task is completed.
+created_at: Timestamp of task creation.
+completed_at: (Optional) Timestamp when the task was completed.
+Stock Price Table:
+
+id: Unique identifier for each stock price entry.
+date: Date when the stock price was recorded.
+price: Stock price value on that date.
+Development Workflow
+Initial Setup
+
+Create the React app using Vite.
+Set up Supabase for backend services, including authentication and database configuration.
+Core Features Development
+
+Task Management: Implement create, edit, delete, and complete functionality.
+Stock Price Updates: Apply stock price changes based on task completion rates.
+Line Chart Visualization: Display stock price history with daily price points.
+Testing and Iteration
+
+Deploy the app on Vercel/Netlify.
+Gather feedback from early users for rapid iteration.
+Adjust based on user input for task completion experience and stock visualization.
+Core Focus
+TaskTickr’s development focuses on delivering core functionality quickly and efficiently:
+
+Ensure a seamless task management experience.
+Visualize task completion impact through a dynamic stock price chart.
+Prioritize speed, simplicity, and zero-cost development.
