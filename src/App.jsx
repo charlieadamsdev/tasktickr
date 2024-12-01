@@ -1,7 +1,8 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
-import { Box, Heading } from '@chakra-ui/react'
+import { Box, Heading, VStack } from '@chakra-ui/react'
 import { TestConnection } from './components/TestConnection'
 import { TaskList } from './components/TaskList'
+import { StockPrice } from './components/StockPrice'
 
 function App() {
   return (
@@ -9,9 +10,12 @@ function App() {
       <Box p={4}>
         <Heading mb={4}>TaskTickr</Heading>
         <TestConnection />
-        <Routes>
-          <Route path="/" element={<TaskList />} />
-        </Routes>
+        <VStack spacing={8}>
+          <StockPrice />
+          <Routes>
+            <Route path="/" element={<TaskList />} />
+          </Routes>
+        </VStack>
       </Box>
     </Router>
   )

@@ -54,11 +54,17 @@ export function TaskList() {
 
       if (error) throw error
       
+      // Update local task state
       setTasks(tasks.map(task => 
         task.id === taskId 
           ? { ...task, status: !currentStatus, completed_at: !currentStatus ? new Date().toISOString() : null }
           : task
       ))
+
+      // Calculate and update stock price
+      console.log('Calculating new price, current status:', !currentStatus)
+      await calculateNewPrice(!currentStatus)
+      
     } catch (error) {
       console.error('Error toggling task status:', error)
     }
@@ -75,6 +81,48 @@ export function TaskList() {
       setTasks(tasks.filter(task => task.id !== taskId))
     } catch (error) {
       console.error('Error deleting task:', error)
+    }
+  }
+
+  const calculateNewPrice = async (currentStatus) => {
+    try {
+      console.log('Starting price calculation:', { currentStatus })
+      
+      const { data: priceData, error: priceError } = await supabase
+        .from('stock_prices')
+        .select('*')
+        .limit(1)
+        .single()
+
+      if (priceError) throw priceError
+      
+      console.log('Current price record:', priceData)
+
+      const currentPrice = priceData?.price || 10
+      const newPrice = currentStatus 
+        ? currentPrice * 1.05  // +5% when completing
+        : currentPrice * 0.97  // -3% when unchecking
+
+      console.log('Price calculation:', {
+        currentPrice,
+        newPrice,
+        change: newPrice - currentPrice
+      })
+
+      const { data: updateData, error: updateError } = await supabase
+        .from('stock_prices')
+        .update({ price: Number(newPrice.toFixed(2)) })
+        .eq('id', priceData.id)
+        .select()
+
+      if (updateError) throw updateError
+      
+      console.log('Price update result:', updateData)
+      
+      return newPrice
+    } catch (error) {
+      console.error('Error updating stock price:', error)
+      return null
     }
   }
 
