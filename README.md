@@ -31,3 +31,5 @@ A gamified to-do list app that helps users build habits by linking task completi
 ## Development
 
 1. Clone the repository
+
+.env
