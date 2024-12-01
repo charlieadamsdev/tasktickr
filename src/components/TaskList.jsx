@@ -56,22 +56,36 @@ export function TaskList() {
       
       setTasks(tasks.map(task => 
         task.id === taskId 
-          ? { ...task, status: !currentStatus } 
+          ? { ...task, status: !currentStatus, completed_at: !currentStatus ? new Date().toISOString() : null }
           : task
       ))
     } catch (error) {
-      console.error('Error updating task:', error)
+      console.error('Error toggling task status:', error)
+    }
+  }
+
+  const handleDeleteTask = async (taskId) => {
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .delete()
+        .eq('id', taskId)
+
+      if (error) throw error
+      setTasks(tasks.filter(task => task.id !== taskId))
+    } catch (error) {
+      console.error('Error deleting task:', error)
     }
   }
 
   return (
-    <Box p={4}>
+    <Box>
       <form onSubmit={handleAddTask}>
         <VStack spacing={4}>
           <Input
-            placeholder="Add a new task..."
             value={newTask}
             onChange={(e) => setNewTask(e.target.value)}
+            placeholder="Add a new task..."
           />
           <Button type="submit" colorScheme="blue">
             Add Task
@@ -82,12 +96,23 @@ export function TaskList() {
       <VStack mt={8} spacing={4}>
         {tasks.map((task) => (
           <Box key={task.id} p={4} borderWidth="1px" borderRadius="lg" width="100%">
-            <HStack spacing={4}>
-              <Text>{task.title}</Text>
-              <Checkbox
-                isChecked={task.status}
-                onChange={() => toggleTaskStatus(task.id, task.status)}
-              />
+            <HStack spacing={4} justify="space-between">
+              <HStack spacing={4}>
+                <Checkbox 
+                  isChecked={task.status} 
+                  onChange={() => toggleTaskStatus(task.id, task.status)}
+                />
+                <Text textDecoration={task.status ? 'line-through' : 'none'}>
+                  {task.title}
+                </Text>
+              </HStack>
+              <Button
+                size="sm"
+                colorScheme="red"
+                onClick={() => handleDeleteTask(task.id)}
+              >
+                Delete
+              </Button>
             </HStack>
           </Box>
         ))}
