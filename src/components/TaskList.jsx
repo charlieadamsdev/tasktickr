@@ -44,11 +44,21 @@ export function TaskList() {
 
   const toggleTaskStatus = async (taskId, currentStatus) => {
     try {
+      // Get the current task to check last_price_change
+      const { data: taskData, error: taskError } = await supabase
+        .from('tasks')
+        .select('last_price_change')
+        .eq('id', taskId)
+        .single()
+
+      if (taskError) throw taskError
+
+      // Update task status
       const { error } = await supabase
         .from('tasks')
         .update({ 
           status: !currentStatus,
-          completed_at: !currentStatus ? new Date().toISOString() : null 
+          completed_at: !currentStatus ? new Date().toISOString() : null
         })
         .eq('id', taskId)
 
@@ -57,13 +67,16 @@ export function TaskList() {
       // Update local task state
       setTasks(tasks.map(task => 
         task.id === taskId 
-          ? { ...task, status: !currentStatus, completed_at: !currentStatus ? new Date().toISOString() : null }
+          ? { 
+              ...task, 
+              status: !currentStatus, 
+              completed_at: !currentStatus ? new Date().toISOString() : null
+            }
           : task
       ))
 
-      // Calculate and update stock price
-      console.log('Calculating new price, current status:', !currentStatus)
-      await calculateNewPrice(!currentStatus)
+      // Calculate new price based on status change
+      await calculateNewPrice(!currentStatus, taskId, taskData.last_price_change)
       
     } catch (error) {
       console.error('Error toggling task status:', error)
@@ -84,9 +97,9 @@ export function TaskList() {
     }
   }
 
-  const calculateNewPrice = async (currentStatus) => {
+  const calculateNewPrice = async (currentStatus, taskId, lastPriceChange) => {
     try {
-      console.log('Starting price calculation:', { currentStatus })
+      console.log('Starting price calculation:', { currentStatus, lastPriceChange })
       
       const { data: priceData, error: priceError } = await supabase
         .from('stock_prices')
@@ -96,12 +109,29 @@ export function TaskList() {
 
       if (priceError) throw priceError
       
-      console.log('Current price record:', priceData)
-
       const currentPrice = priceData?.price || 10
-      const newPrice = currentStatus 
-        ? currentPrice * 1.05  // +5% when completing
-        : currentPrice * 0.97  // -3% when unchecking
+      let newPrice, priceChange
+
+      if (currentStatus) {
+        // Task being completed - add 5%
+        priceChange = currentPrice * 0.05
+        newPrice = currentPrice + priceChange
+        
+        // Store the price change amount
+        await supabase
+          .from('tasks')
+          .update({ last_price_change: priceChange })
+          .eq('id', taskId)
+      } else {
+        // Task being unchecked - remove the exact amount that was added
+        newPrice = currentPrice - lastPriceChange
+        
+        // Reset the stored price change
+        await supabase
+          .from('tasks')
+          .update({ last_price_change: null })
+          .eq('id', taskId)
+      }
 
       console.log('Price calculation:', {
         currentPrice,
@@ -109,15 +139,12 @@ export function TaskList() {
         change: newPrice - currentPrice
       })
 
-      const { data: updateData, error: updateError } = await supabase
+      const { error: updateError } = await supabase
         .from('stock_prices')
         .update({ price: Number(newPrice.toFixed(2)) })
         .eq('id', priceData.id)
-        .select()
 
       if (updateError) throw updateError
-      
-      console.log('Price update result:', updateData)
       
       return newPrice
     } catch (error) {

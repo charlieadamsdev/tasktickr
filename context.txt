@@ -12,10 +12,12 @@ Complete Tasks: Mark tasks as complete, triggering a stock price update.
 Stock Price Tracking
 
 Stock Price Rules:
-Completing all tasks in a day increases the stock price by +5%.
-Missing any tasks decreases the stock price by -3%.
-Base Stock Price: Starts at 10.
-Historical Tracking: Tracks daily stock price changes and logs them.
+- Each task can affect the price once per day:
+  - First completion: +5% increase
+  - First uncomplete: -3% decrease
+- Tasks cannot affect the price again until the next day
+- Base Stock Price: Starts at 10
+- Historical Tracking: Tracks daily stock price changes and logs them
 Line Chart Visualization
 
 Displays stock price history in a line chart that mimics stock market trends.
@@ -33,6 +35,7 @@ description: (Optional) Details of the task.
 status: Boolean indicating if the task is completed.
 created_at: Timestamp of task creation.
 completed_at: (Optional) Timestamp when the task was completed.
+last_toggled_at: Date when the task was last toggled
 Stock Price Table:
 
 id: Unique identifier for each stock price entry.
