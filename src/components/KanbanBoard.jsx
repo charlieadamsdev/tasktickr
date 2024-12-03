@@ -1,9 +1,35 @@
 import { useState } from 'react'
-import { Box, Text, VStack, HStack, useBreakpointValue, Button } from '@chakra-ui/react'
+import { 
+  Box, 
+  Text, 
+  VStack, 
+  HStack, 
+  useBreakpointValue, 
+  Button,
+  Editable,
+  EditableInput,
+  EditablePreview,
+  IconButton,
+  useEditableControls
+} from '@chakra-ui/react'
+import { EditIcon } from '@chakra-ui/icons'
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd'
 import { supabase } from '../lib/supabase'
 
-const Column = ({ title, tasks, id, onDeleteTask }) => {
+function EditableControls() {
+  const { isEditing, getSubmitButtonProps, getCancelButtonProps, getEditButtonProps } = useEditableControls()
+  
+  return !isEditing ? (
+    <IconButton
+      size="sm"
+      icon={<EditIcon />}
+      variant="ghost"
+      {...getEditButtonProps()}
+    />
+  ) : null
+}
+
+const Column = ({ title, tasks, id, onDeleteTask, onEditTask }) => {
   const isVertical = useBreakpointValue({ base: true, md: false })
 
   return (
@@ -41,8 +67,29 @@ const Column = ({ title, tasks, id, onDeleteTask }) => {
                     shadow={snapshot.isDragging ? "md" : "sm"}
                     position="relative"
                   >
-                    <HStack justify="space-between" align="center">
-                      <Text>{task.title}</Text>
+                    <HStack justify="space-between" align="center" width="100%">
+                      <Editable 
+                        defaultValue={task.title} 
+                        width="100%"
+                        submitOnBlur={true}
+                      >
+                        <EditablePreview />
+                        <EditableInput 
+                          onBlur={(e) => onEditTask(task.id, e.target.value)}
+                        />
+                        <EditableControls>
+                          <IconButton
+                            icon={<EditIcon />}
+                            size="sm"
+                            variant="ghost"
+                            aria-label="Edit task"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              // This will trigger the edit mode
+                            }}
+                          />
+                        </EditableControls>
+                      </Editable>
                       <Button
                         size="sm"
                         colorScheme="red"
@@ -67,7 +114,7 @@ const Column = ({ title, tasks, id, onDeleteTask }) => {
   )
 }
 
-export function KanbanBoard({ tasks, onTaskMove, onDeleteTask }) {
+export function KanbanBoard({ tasks, onTaskMove, onDeleteTask, onEditTask }) {
   const isVertical = useBreakpointValue({ base: true, md: false })
 
   const handleDragEnd = async (result) => {
@@ -178,6 +225,7 @@ export function KanbanBoard({ tasks, onTaskMove, onDeleteTask }) {
                 title={column.title}
                 tasks={column.tasks}
                 onDeleteTask={onDeleteTask}
+                onEditTask={onEditTask}
               />
             ))
           ) : (
@@ -190,6 +238,7 @@ export function KanbanBoard({ tasks, onTaskMove, onDeleteTask }) {
                   title={column.title}
                   tasks={column.tasks}
                   onDeleteTask={onDeleteTask}
+                  onEditTask={onEditTask}
                 />
               ))}
             </HStack>

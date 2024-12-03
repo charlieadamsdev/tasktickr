@@ -70,17 +70,15 @@ export function TaskList() {
     if (!newTask.trim()) return
 
     try {
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('tasks')
         .insert([{ 
           title: newTask.trim(), 
           status: false,
           column_name: 'todo'
         }])
-        .select()
 
       if (error) throw error
-      setTasks([data[0], ...tasks])
       setNewTask('')
     } catch (error) {
       console.error('Error adding task:', error)
@@ -218,6 +216,20 @@ export function TaskList() {
     }
   }
 
+  const handleEditTask = async (taskId, newTitle) => {
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .update({ title: newTitle.trim() })
+        .eq('id', taskId)
+
+      if (error) throw error
+      // Local state will be updated automatically through the real-time subscription
+    } catch (error) {
+      console.error('Error updating task:', error)
+    }
+  }
+
   return (
     <Box width="100%">
       <form onSubmit={handleAddTask}>
@@ -237,6 +249,7 @@ export function TaskList() {
         tasks={tasks}
         onTaskMove={handleTaskMove}
         onDeleteTask={handleDeleteTask}
+        onEditTask={handleEditTask}
       />
     </Box>
   )
