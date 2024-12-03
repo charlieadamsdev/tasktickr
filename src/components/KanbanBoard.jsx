@@ -1,9 +1,9 @@
 import { useState } from 'react'
-import { Box, Text, VStack, HStack, useBreakpointValue } from '@chakra-ui/react'
+import { Box, Text, VStack, HStack, useBreakpointValue, Button } from '@chakra-ui/react'
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd'
 import { supabase } from '../lib/supabase'
 
-const Column = ({ title, tasks, id }) => {
+const Column = ({ title, tasks, id, onDeleteTask }) => {
   const isVertical = useBreakpointValue({ base: true, md: false })
 
   return (
@@ -39,8 +39,22 @@ const Column = ({ title, tasks, id }) => {
                     borderRadius="md"
                     bg={snapshot.isDragging ? "gray.100" : "white"}
                     shadow={snapshot.isDragging ? "md" : "sm"}
+                    position="relative"
                   >
-                    <Text>{task.title}</Text>
+                    <HStack justify="space-between" align="center">
+                      <Text>{task.title}</Text>
+                      <Button
+                        size="sm"
+                        colorScheme="red"
+                        variant="ghost"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDeleteTask(task.id);
+                        }}
+                      >
+                        Delete
+                      </Button>
+                    </HStack>
                   </Box>
                 )}
               </Draggable>
@@ -53,7 +67,7 @@ const Column = ({ title, tasks, id }) => {
   )
 }
 
-export function KanbanBoard({ tasks, onTaskMove }) {
+export function KanbanBoard({ tasks, onTaskMove, onDeleteTask }) {
   const isVertical = useBreakpointValue({ base: true, md: false })
 
   const handleDragEnd = async (result) => {
@@ -136,6 +150,21 @@ export function KanbanBoard({ tasks, onTaskMove }) {
     }
   }
 
+  const handleDeleteTask = async (taskId) => {
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .delete()
+        .eq('id', taskId)
+
+      if (error) throw error
+
+      // Local state will be updated automatically through the real-time subscription
+    } catch (error) {
+      console.error('Error deleting task:', error)
+    }
+  }
+
   return (
     <DragDropContext onDragEnd={handleDragEnd}>
       <Box width="100%" overflowX={isVertical ? "visible" : "auto"}>
@@ -148,6 +177,7 @@ export function KanbanBoard({ tasks, onTaskMove }) {
                 id={column.id}
                 title={column.title}
                 tasks={column.tasks}
+                onDeleteTask={onDeleteTask}
               />
             ))
           ) : (
@@ -159,6 +189,7 @@ export function KanbanBoard({ tasks, onTaskMove }) {
                   id={column.id}
                   title={column.title}
                   tasks={column.tasks}
+                  onDeleteTask={onDeleteTask}
                 />
               ))}
             </HStack>

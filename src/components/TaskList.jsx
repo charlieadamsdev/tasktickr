@@ -204,6 +204,20 @@ export function TaskList() {
     }
   }
 
+  const handleDeleteTask = async (taskId) => {
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .delete()
+        .eq('id', taskId)
+
+      if (error) throw error
+      // Local state will be updated automatically through the real-time subscription
+    } catch (error) {
+      console.error('Error deleting task:', error)
+    }
+  }
+
   return (
     <Box width="100%">
       <form onSubmit={handleAddTask}>
@@ -222,6 +236,7 @@ export function TaskList() {
       <KanbanBoard 
         tasks={tasks}
         onTaskMove={handleTaskMove}
+        onDeleteTask={handleDeleteTask}
       />
     </Box>
   )
