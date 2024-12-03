@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase'
 export function PriceChart() {
   const [priceHistory, setPriceHistory] = useState([])
   const [timeRange, setTimeRange] = useState('1d') // 1d, 1w, 1m
+  const [currentPrice, setCurrentPrice] = useState(0)
 
   useEffect(() => {
     fetchPriceHistory()
@@ -64,6 +65,12 @@ export function PriceChart() {
       supabase.removeChannel(channel)
     }
   }, [timeRange])
+
+  useEffect(() => {
+    if (priceHistory.length > 0) {
+      setCurrentPrice(priceHistory[priceHistory.length - 1].price)
+    }
+  }, [priceHistory])
 
   const fetchPriceHistory = async () => {
     try {
@@ -131,9 +138,20 @@ export function PriceChart() {
               textAnchor="end"
             />
             <YAxis 
-              domain={[0, 50]}
+              domain={[
+                dataMin => Math.max(0, Math.floor((currentPrice - 10) / 2) * 2),  // Round down to nearest even
+                dataMax => Math.ceil((currentPrice + 10) / 2) * 2  // Round up to nearest even
+              ]}
               tick={{ fontSize: 12 }}
               tickFormatter={(value) => `$${value}`}
+              interval={0}
+              ticks={Array.from(
+                { length: 11 },
+                (_, i) => {
+                  const minPrice = Math.max(0, Math.floor((currentPrice - 10) / 2) * 2)
+                  return minPrice + (i * 2)  // Always increment by 2 to ensure even numbers
+                }
+              )}
             />
             <Tooltip 
               formatter={(value) => [`$${value.toFixed(2)}`, 'Price']}

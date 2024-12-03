@@ -142,7 +142,7 @@ export function KanbanBoard({ tasks, onTaskMove, onDeleteTask, onEditTask }) {
         const isDone = destinationColumn === 'done'
         onTaskMove(taskId, isDone)
       } else {
-        // Update the task's column in Supabase
+        // Update the task's column in Supabase without triggering price update
         const { error } = await supabase
           .from('tasks')
           .update({ 
@@ -155,17 +155,9 @@ export function KanbanBoard({ tasks, onTaskMove, onDeleteTask, onEditTask }) {
           console.error('Supabase error:', error)
           throw error
         }
-
-        // Update local state
-        const updatedTasks = tasks.map(task =>
-          task.id === taskId
-            ? { ...task, column_name: destinationColumn }
-            : task
-        )
-        onTaskMove(taskId, false, updatedTasks)
       }
     } catch (error) {
-      console.error('Error updating task column:', error)
+      console.error('Error moving task:', error)
     }
   }
 
