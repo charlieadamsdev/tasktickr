@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
-import { Box, VStack, Input, Button, Text, Checkbox, HStack } from '@chakra-ui/react'
+import { Box, VStack, Input, Button } from '@chakra-ui/react'
 import { supabase } from '../lib/supabase'
+import { KanbanBoard } from './KanbanBoard'
 
 export function TaskList() {
   const [newTask, setNewTask] = useState('')
@@ -8,6 +9,46 @@ export function TaskList() {
 
   useEffect(() => {
     fetchTasks()
+
+    // Set up real-time subscription for tasks
+    const channel = supabase
+      .channel('tasks_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // Listen to all events (insert, update, delete)
+          schema: 'public',
+          table: 'tasks'
+        },
+        (payload) => {
+          console.log('Task change detected:', payload)
+          
+          // Handle different types of changes
+          switch (payload.eventType) {
+            case 'INSERT':
+              setTasks(current => [payload.new, ...current])
+              break
+            case 'UPDATE':
+              setTasks(current =>
+                current.map(task =>
+                  task.id === payload.new.id ? payload.new : task
+                )
+              )
+              break
+            case 'DELETE':
+              setTasks(current =>
+                current.filter(task => task.id !== payload.old.id)
+              )
+              break
+          }
+        }
+      )
+      .subscribe()
+
+    // Cleanup subscription on unmount
+    return () => {
+      supabase.removeChannel(channel)
+    }
   }, [])
 
   async function fetchTasks() {
@@ -31,7 +72,11 @@ export function TaskList() {
     try {
       const { data, error } = await supabase
         .from('tasks')
-        .insert([{ title: newTask.trim(), status: false }])
+        .insert([{ 
+          title: newTask.trim(), 
+          status: false,
+          column_name: 'todo'
+        }])
         .select()
 
       if (error) throw error
@@ -42,7 +87,7 @@ export function TaskList() {
     }
   }
 
-  const toggleTaskStatus = async (taskId, currentStatus) => {
+  const handleTaskMove = async (taskId, isDone) => {
     try {
       // Get the current task to check last_price_change
       const { data: taskData, error: taskError } = await supabase
@@ -57,8 +102,8 @@ export function TaskList() {
       const { error } = await supabase
         .from('tasks')
         .update({ 
-          status: !currentStatus,
-          completed_at: !currentStatus ? new Date().toISOString() : null
+          status: isDone,
+          completed_at: isDone ? new Date().toISOString() : null
         })
         .eq('id', taskId)
 
@@ -69,31 +114,17 @@ export function TaskList() {
         task.id === taskId 
           ? { 
               ...task, 
-              status: !currentStatus, 
-              completed_at: !currentStatus ? new Date().toISOString() : null
+              status: isDone, 
+              completed_at: isDone ? new Date().toISOString() : null
             }
           : task
       ))
 
       // Calculate new price based on status change
-      await calculateNewPrice(!currentStatus, taskId, taskData.last_price_change)
+      await calculateNewPrice(isDone, taskId, taskData.last_price_change)
       
     } catch (error) {
-      console.error('Error toggling task status:', error)
-    }
-  }
-
-  const handleDeleteTask = async (taskId) => {
-    try {
-      const { error } = await supabase
-        .from('tasks')
-        .delete()
-        .eq('id', taskId)
-
-      if (error) throw error
-      setTasks(tasks.filter(task => task.id !== taskId))
-    } catch (error) {
-      console.error('Error deleting task:', error)
+      console.error('Error moving task:', error)
     }
   }
 
@@ -117,20 +148,40 @@ export function TaskList() {
         priceChange = currentPrice * 0.05
         newPrice = currentPrice + priceChange
         
-        // Store the price change amount
-        await supabase
-          .from('tasks')
-          .update({ last_price_change: priceChange })
-          .eq('id', taskId)
+        // Store the price change amount and add to price history
+        await Promise.all([
+          supabase
+            .from('tasks')
+            .update({ last_price_change: priceChange })
+            .eq('id', taskId),
+          supabase
+            .from('price_history')
+            .insert({
+              price: newPrice,
+              task_id: taskId,
+              change_type: 'completion',
+              price_change: priceChange
+            })
+        ])
       } else {
         // Task being unchecked - remove the exact amount that was added
         newPrice = currentPrice - lastPriceChange
         
-        // Reset the stored price change
-        await supabase
-          .from('tasks')
-          .update({ last_price_change: null })
-          .eq('id', taskId)
+        // Reset the stored price change and add to price history
+        await Promise.all([
+          supabase
+            .from('tasks')
+            .update({ last_price_change: null })
+            .eq('id', taskId),
+          supabase
+            .from('price_history')
+            .insert({
+              price: newPrice,
+              task_id: taskId,
+              change_type: 'uncomplete',
+              price_change: -lastPriceChange
+            })
+        ])
       }
 
       console.log('Price calculation:', {
@@ -154,9 +205,9 @@ export function TaskList() {
   }
 
   return (
-    <Box>
+    <Box width="100%">
       <form onSubmit={handleAddTask}>
-        <VStack spacing={4}>
+        <VStack spacing={4} mb={8}>
           <Input
             value={newTask}
             onChange={(e) => setNewTask(e.target.value)}
@@ -168,30 +219,10 @@ export function TaskList() {
         </VStack>
       </form>
       
-      <VStack mt={8} spacing={4}>
-        {tasks.map((task) => (
-          <Box key={task.id} p={4} borderWidth="1px" borderRadius="lg" width="100%">
-            <HStack spacing={4} justify="space-between">
-              <HStack spacing={4}>
-                <Checkbox 
-                  isChecked={task.status} 
-                  onChange={() => toggleTaskStatus(task.id, task.status)}
-                />
-                <Text textDecoration={task.status ? 'line-through' : 'none'}>
-                  {task.title}
-                </Text>
-              </HStack>
-              <Button
-                size="sm"
-                colorScheme="red"
-                onClick={() => handleDeleteTask(task.id)}
-              >
-                Delete
-              </Button>
-            </HStack>
-          </Box>
-        ))}
-      </VStack>
+      <KanbanBoard 
+        tasks={tasks}
+        onTaskMove={handleTaskMove}
+      />
     </Box>
   )
 } 
